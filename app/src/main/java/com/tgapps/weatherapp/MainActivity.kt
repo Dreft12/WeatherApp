@@ -4,31 +4,24 @@ import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
-import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.OnRequestPermissionsResultCallback
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.*
-import com.google.android.gms.maps.GoogleMap.OnMyLocationButtonClickListener
-import com.google.android.gms.maps.GoogleMap.OnMyLocationClickListener
-import com.google.android.gms.maps.model.LatLng
 import com.tgapps.weatherapp.databinding.ActivityMainBinding
 import com.tgapps.weatherapp.utils.PermissionUtils
 import com.tgapps.weatherapp.utils.PermissionUtils.isPermissionGranted
 import com.tgapps.weatherapp.viewModels.MainActivityViewModel
 
-class MainActivity : AppCompatActivity(), OnMapReadyCallback, OnMyLocationClickListener,
-    OnMyLocationButtonClickListener, OnRequestPermissionsResultCallback {
-
+class MainActivity : AppCompatActivity(), OnMapReadyCallback,
+    OnRequestPermissionsResultCallback {
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainActivityViewModel: MainActivityViewModel
-    private lateinit var mMap: GoogleMap
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,15 +30,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, OnMyLocationClickL
         ) {
             Log.e(TAG, "onCreate: New Map initialized")
         }
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         mainActivityViewModel = ViewModelProvider(this)[MainActivityViewModel::class.java]
 
-        val mapFragment = supportFragmentManager
-            .findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
+        binding.map.onCreate(savedInstanceState)
+        binding.map.onResume()
+        binding.map.getMapAsync(this)
         observeFromViewModel()
+        listeners()
+    }
+
+    private fun listeners() {
+        binding.myLocation.setOnClickListener {
+            getLastLocation()
+        }
     }
 
     private fun observeFromViewModel() {
@@ -57,15 +56,20 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, OnMyLocationClickL
         }
     }
 
+    @SuppressLint("MissingPermission")
+    private fun getLastLocation() {
+        LocationServices.getFusedLocationProviderClient(this).lastLocation.addOnSuccessListener {
+            mainActivityViewModel.userLocation.value = it
+            mainActivityViewModel.moveCamera(it, 15.0f)
+        }
+    }
+
     override fun onMapReady(p0: GoogleMap) {
-        mMap = p0
-        Log.d(TAG, "onMapReady: Getting user's location")
-        mMap.setOnMyLocationButtonClickListener(this)
-        mMap.setOnMyLocationClickListener(this)
+        mainActivityViewModel.initMap(p0)
+        mainActivityViewModel.configMap()
         enableLocation()
     }
 
-    @SuppressLint("MissingPermission")
     private fun enableLocation() {
         if (ContextCompat.checkSelfPermission(
                 this,
@@ -75,12 +79,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, OnMyLocationClickL
                 ACCESS_COARSE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            mMap.isMyLocationEnabled = true
             mainActivityViewModel.isPermissionEnabled.value = true
-            LocationServices.getFusedLocationProviderClient(this).lastLocation.addOnSuccessListener {
-                mainActivityViewModel.userLocation.value = it
-                moveCamera(it, 15.0f)
-            }
+            getLastLocation()
             return
         }
 
@@ -140,26 +140,5 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, OnMyLocationClickL
     companion object {
         private const val TAG = "MainActivity"
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
-    }
-
-    private fun moveCamera(location: Location, zoom: Float) {
-        mMap.animateCamera(
-            CameraUpdateFactory.newLatLngZoom(
-                LatLng(
-                    location.latitude,
-                    location.longitude
-                ),
-                zoom
-            )
-        )
-    }
-
-    override fun onMyLocationClick(p0: Location) {
-        mainActivityViewModel.userLocation.value = p0
-    }
-
-    override fun onMyLocationButtonClick(): Boolean {
-        mainActivityViewModel.userLocation.value?.let { moveCamera(it, 15.0f) }
-        return false
     }
 }
