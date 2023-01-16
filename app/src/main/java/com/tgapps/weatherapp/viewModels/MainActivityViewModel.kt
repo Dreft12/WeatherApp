@@ -2,12 +2,9 @@ package com.tgapps.weatherapp.viewModels
 
 import android.annotation.SuppressLint
 import android.app.Application
-import android.content.Context
 import android.location.Location
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -15,7 +12,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.api.model.RectangularBounds
 import com.google.android.libraries.places.api.model.TypeFilter
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
 import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest
@@ -51,6 +47,16 @@ class MainActivityViewModel @Inject constructor(
         context = application
     }
 
+    val isPermissionEnabled: MutableLiveData<Boolean>
+        get() {
+            return MutableLiveData<Boolean>()
+        }
+
+    val userLocation: MutableLiveData<Location>
+        get() {
+            return MutableLiveData<Location>()
+        }
+
     fun initPlaces() {
         Places.initialize(context, BuildConfig.MAPS_API_KEY)
         placesClient.value = Places.createClient(context)
@@ -75,16 +81,6 @@ class MainActivityViewModel @Inject constructor(
             }
         }
     }
-
-    val isPermissionEnabled: MutableLiveData<Boolean>
-        get() {
-            return MutableLiveData<Boolean>()
-        }
-
-    val userLocation: MutableLiveData<Location>
-        get() {
-            return MutableLiveData<Location>()
-        }
 
     fun initMap(map: GoogleMap) {
         this.map = map

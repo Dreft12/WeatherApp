@@ -3,48 +3,34 @@ package com.tgapps.weatherapp
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
-import android.util.Log
+import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.ArrayAdapter
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.OnRequestPermissionsResultCallback
-import androidx.core.app.ActivityCompat.startActivityForResult
 import androidx.core.content.ContextCompat
 import androidx.core.widget.doAfterTextChanged
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import com.google.android.gms.common.api.Status
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.*
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.libraries.places.api.Places
-import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.api.model.TypeFilter
-import com.google.android.libraries.places.widget.Autocomplete
-import com.google.android.libraries.places.widget.AutocompleteSupportFragment
-import com.google.android.libraries.places.widget.listener.PlaceSelectionListener
-import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
-import com.tgapps.weatherapp.databinding.ActivityMainBinding
-import com.tgapps.weatherapp.app.utils.Constants.AUTOCOMPLETE_REQUEST_CODE
 import com.tgapps.weatherapp.app.utils.PermissionUtils
 import com.tgapps.weatherapp.app.utils.PermissionUtils.isPermissionGranted
+import com.tgapps.weatherapp.databinding.ActivityMainBinding
+import com.tgapps.weatherapp.utils.DateUtils.convertToDate
 import com.tgapps.weatherapp.utils.setupClearButtonWithAction
 import com.tgapps.weatherapp.viewModels.MainActivityViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
-import javax.inject.Inject
+import java.util.*
+import kotlin.math.floor
+import kotlin.math.round
+import kotlin.math.truncate
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity(), OnMapReadyCallback,
@@ -104,6 +90,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
             false
         }
 
+        binding.closeInfoBtn.setOnClickListener {
+            binding.cardContainer.visibility = View.INVISIBLE
+        }
+
         binding.searchCity.setupClearButtonWithAction()
     }
 
@@ -125,6 +115,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
                     mainActivityViewModel.searchValue.value =
                         parent.getItemAtPosition(position).toString()
                     mainActivityViewModel.loadCities()
+
                 }
             }
         }
@@ -134,13 +125,24 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
             targetLocation.longitude = it.location.lon
             targetLocation.latitude = it.location.lat
             mainActivityViewModel.moveCamera(targetLocation, 11f)
+            binding.titleCityName.text = getString(R.string.title_name_city, it.location.name)
+            binding.tempC.text =
+                String.format(getString(R.string.tempC_value) + " " + it.current.tempC.toString())
+            binding.tempF.text = String.format(getString(R.string.tempF_value) + " " + it.current.tempF.toString())
+            binding.humidity.text = String.format(getString(R.string.humidity_value) + " " + it.current.humidity.toString() + "%%")
+            binding.localTime.text = String.format(getString(R.string.local_time) + " " + it.location.localTime)
+            binding.condition.text = String.format(getString(R.string.condition_value) + " " + it.current.condition.text)
+            binding.feelsLikeC.text = String.format(getString(R.string.title_feels_like_c) + " " + it.current.feelsLikeC)
+            binding.feelsLikeF.text = String.format(getString(R.string.title_feels_like_f) + " " + it.current.feelsLikeF)
+            binding.cardContainer.visibility = View.VISIBLE
+
         }
     }
 
     @SuppressLint("MissingPermission")
     private fun getLastLocation() {
         LocationServices.getFusedLocationProviderClient(this).lastLocation.addOnSuccessListener {
-            if(it != null){
+            if (it != null) {
                 mainActivityViewModel.userLocation.value = it
                 mainActivityViewModel.moveCamera(it, 15.0f)
             }
