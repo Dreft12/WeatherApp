@@ -4,20 +4,28 @@ import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.OnRequestPermissionsResultCallback
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.*
+import com.google.android.gms.maps.model.LatLng
 import com.tgapps.weatherapp.databinding.ActivityMainBinding
 import com.tgapps.weatherapp.utils.PermissionUtils
 import com.tgapps.weatherapp.utils.PermissionUtils.isPermissionGranted
 import com.tgapps.weatherapp.viewModels.MainActivityViewModel
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity(), OnMapReadyCallback,
     OnRequestPermissionsResultCallback {
     private lateinit var binding: ActivityMainBinding
@@ -34,11 +42,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
         setContentView(binding.root)
         mainActivityViewModel = ViewModelProvider(this)[MainActivityViewModel::class.java]
 
+        initMap(savedInstanceState)
+        observeFromViewModel()
+        listeners()
+    }
+
+    private fun initMap(savedInstanceState: Bundle?) {
         binding.map.onCreate(savedInstanceState)
         binding.map.onResume()
         binding.map.getMapAsync(this)
-        observeFromViewModel()
-        listeners()
     }
 
     private fun listeners() {
@@ -53,6 +65,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
 
         mainActivityViewModel.userLocation.observe(this) {
 
+        }
+
+        mainActivityViewModel.city.observe(this) {
+            val targetLocation = Location(LocationManager.GPS_PROVIDER)
+            targetLocation.longitude = it.location.lon
+            targetLocation.latitude = it.location.lat
+            mainActivityViewModel.moveCamera(targetLocation, 11f)
         }
     }
 
