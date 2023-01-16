@@ -19,25 +19,25 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.*
-import com.tgapps.weatherapp.app.utils.PermissionUtils
-import com.tgapps.weatherapp.app.utils.PermissionUtils.isPermissionGranted
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.tgapps.weatherapp.utils.PermissionUtils
+import com.tgapps.weatherapp.utils.PermissionUtils.isPermissionGranted
 import com.tgapps.weatherapp.databinding.ActivityMainBinding
-import com.tgapps.weatherapp.utils.DateUtils.convertToDate
+import com.tgapps.weatherapp.models.City
 import com.tgapps.weatherapp.utils.setupClearButtonWithAction
 import com.tgapps.weatherapp.viewModels.MainActivityViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import java.util.*
-import kotlin.math.floor
-import kotlin.math.round
-import kotlin.math.truncate
+import kotlin.collections.ArrayList
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity(), OnMapReadyCallback,
     OnRequestPermissionsResultCallback {
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainActivityViewModel: MainActivityViewModel
-
+    private lateinit var mAdapter: ArrayAdapter<String>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         MapsInitializer.initialize(
@@ -74,9 +74,28 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     private fun listeners() {
+        mAdapter =
+            ArrayAdapter(this@MainActivity, android.R.layout.simple_dropdown_item_1line)
         binding.myLocation.setOnClickListener {
             getLastLocation()
         }
+
+        binding.searchCity.setOnClickListener {
+            mAdapter.clear()
+            val array: ArrayList<String> = if (mainActivityViewModel.sharedPreferences.contains("history"))
+                Gson().fromJson(
+                    mainActivityViewModel.sharedPreferences.getString(
+                        "history",
+                        ""
+                    ), object : TypeToken<ArrayList<String>>() {}.type
+                ) else ArrayList()
+            mAdapter.addAll(
+                array.distinct()
+            )
+            mAdapter.notifyDataSetChanged()
+            binding.searchCity.showDropdownNow()
+        }
+
 
         binding.searchCity.doAfterTextChanged {
             mainActivityViewModel.searchValue.value = it.toString()
@@ -94,10 +113,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
             binding.cardContainer.visibility = View.INVISIBLE
         }
 
+        binding.searchCity.apply {
+            setAdapter(mAdapter)
+            threshold = 3
+            setOnItemClickListener { parent, _, position, _ ->
+                mainActivityViewModel.searchValue.value =
+                    parent.getItemAtPosition(position).toString()
+                mainActivityViewModel.loadCities()
+            }
+        }
+
         binding.searchCity.setupClearButtonWithAction()
     }
 
     private fun observeFromViewModel() {
+
         mainActivityViewModel.isPermissionEnabled.observe(this) {
         }
 
@@ -106,18 +136,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
         }
 
         mainActivityViewModel.citiesList.observe(this) {
-            val adapter =
-                ArrayAdapter(this@MainActivity, android.R.layout.simple_dropdown_item_1line, it)
-            binding.searchCity.apply {
-                setAdapter(adapter)
-                threshold = 5
-                setOnItemClickListener { parent, _, position, _ ->
-                    mainActivityViewModel.searchValue.value =
-                        parent.getItemAtPosition(position).toString()
-                    mainActivityViewModel.loadCities()
-
-                }
-            }
+            mAdapter.addAll(it)
+            mAdapter.notifyDataSetChanged()
         }
 
         mainActivityViewModel.city.observe(this) {
@@ -128,14 +148,19 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
             binding.titleCityName.text = getString(R.string.title_name_city, it.location.name)
             binding.tempC.text =
                 String.format(getString(R.string.tempC_value) + " " + it.current.tempC.toString())
-            binding.tempF.text = String.format(getString(R.string.tempF_value) + " " + it.current.tempF.toString())
-            binding.humidity.text = String.format(getString(R.string.humidity_value) + " " + it.current.humidity.toString() + "%%")
-            binding.localTime.text = String.format(getString(R.string.local_time) + " " + it.location.localTime)
-            binding.condition.text = String.format(getString(R.string.condition_value) + " " + it.current.condition.text)
-            binding.feelsLikeC.text = String.format(getString(R.string.title_feels_like_c) + " " + it.current.feelsLikeC)
-            binding.feelsLikeF.text = String.format(getString(R.string.title_feels_like_f) + " " + it.current.feelsLikeF)
+            binding.tempF.text =
+                String.format(getString(R.string.tempF_value) + " " + it.current.tempF.toString())
+            binding.humidity.text =
+                String.format(getString(R.string.humidity_value) + " " + it.current.humidity.toString() + "%%")
+            binding.localTime.text =
+                String.format(getString(R.string.local_time) + " " + it.location.localTime)
+            binding.condition.text =
+                String.format(getString(R.string.condition_value) + " " + it.current.condition.text)
+            binding.feelsLikeC.text =
+                String.format(getString(R.string.title_feels_like_c) + " " + it.current.feelsLikeC)
+            binding.feelsLikeF.text =
+                String.format(getString(R.string.title_feels_like_f) + " " + it.current.feelsLikeF)
             binding.cardContainer.visibility = View.VISIBLE
-
         }
     }
 
