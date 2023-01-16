@@ -3,11 +3,10 @@ package com.tgapps.weatherapp.viewModels
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
+import android.content.SharedPreferences
 import android.location.Location
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -15,11 +14,12 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.api.model.RectangularBounds
 import com.google.android.libraries.places.api.model.TypeFilter
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
 import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest
 import com.google.android.libraries.places.api.net.PlacesClient
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.tgapps.weatherapp.BuildConfig
 import com.tgapps.weatherapp.models.City
 import com.tgapps.weatherapp.services.networking.Repository
@@ -44,36 +44,20 @@ class MainActivityViewModel @Inject constructor(
     private val placesClient = MutableLiveData<PlacesClient>()
     private val placeNames: MutableList<Place.Field> = mutableListOf()
     private var context: Application
-    lateinit var request: FindCurrentPlaceRequest
+    private lateinit var request: FindCurrentPlaceRequest
     var citiesList = MutableLiveData<ArrayList<String>>()
+    var historyCity = ArrayList<String>()
+    var sharedPreferences: SharedPreferences
 
     init {
         context = application
-    }
-
-    fun initPlaces() {
-        Places.initialize(context, BuildConfig.MAPS_API_KEY)
-        placesClient.value = Places.createClient(context)
-        placeNames.add(Place.Field.NAME)
-        placeNames.add(Place.Field.ADDRESS)
-        placeNames.add(Place.Field.LAT_LNG)
-        request = FindCurrentPlaceRequest.newInstance(placeNames)
-    }
-
-    fun loadCities() {
-        CoroutineScope(Dispatchers.IO).launch {
-            val cities = repository.getCurrentWeather(searchValue.value.toString().split(",")[0])
-            when (cities.isSuccessful) {
-                true -> {
-                    with(cities.body()) {
-                        city.postValue(this)
-                    }
-                }
-                else -> {
-                    Timber.e(cities.message())
-                }
-            }
-        }
+        sharedPreferences = application.getSharedPreferences("WeatherApp", Context.MODE_PRIVATE)
+        historyCity = if (sharedPreferences.contains("history")) Gson().fromJson(
+            sharedPreferences.getString(
+                "history",
+                ""
+            ), object : TypeToken<ArrayList<String>>() {}.type
+        ) else ArrayList()
     }
 
     val isPermissionEnabled: MutableLiveData<Boolean>
@@ -86,16 +70,55 @@ class MainActivityViewModel @Inject constructor(
             return MutableLiveData<Location>()
         }
 
+    fun initPlaces() {
+        Places.initialize(context, BuildConfig.MAPS_API_KEY)
+        placesClient.value = Places.createClient(context)
+        placeNames.add(Place.Field.NAME)
+        placeNames.add(Place.Field.ADDRESS)
+        placeNames.add(Place.Field.LAT_LNG)
+        request = FindCurrentPlaceRequest.newInstance(placeNames)
+    }
+
+    private fun writeHistory() {
+        val editor = sharedPreferences.edit()
+        editor.clear()
+        editor.putString("history", Gson().toJson(historyCity))
+        editor.apply()
+    }
+
+    fun loadCities() {
+        CoroutineScope(Dispatchers.IO).launch {
+            val cities = repository.getCurrentWeather(searchValue.value.toString().split(",")[0])
+            when (cities.isSuccessful) {
+                true -> {
+                    with(cities.body()) {
+                        city.postValue(this)
+                        this?.let { historyCity.add(it.location.name) }
+                        writeHistory()
+                    }
+                }
+                else -> {
+                    Timber.e(cities.message())
+                }
+            }
+        }
+    }
+
     fun initMap(map: GoogleMap) {
         this.map = map
     }
 
     @SuppressLint("MissingPermission")
     fun configMap() {
-        this.map.isMyLocationEnabled = true
-        this.map.uiSettings.isMyLocationButtonEnabled = false
-        this.map.setOnMyLocationButtonClickListener(this)
-        this.map.setOnMyLocationClickListener(this)
+        try {
+            this.map.isMyLocationEnabled = true
+            this.map.uiSettings.isMyLocationButtonEnabled = false
+            this.map.setOnMyLocationButtonClickListener(this)
+            this.map.setOnMyLocationClickListener(this)
+        } catch (e: java.lang.Exception) {
+            println(e.message)
+        }
+
     }
 
     override fun onMyLocationClick(p0: Location) {
