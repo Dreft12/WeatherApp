@@ -1,4 +1,4 @@
-package com.tgapps.weatherapp.utils
+package com.tgapps.weatherapp.app.utils
 
 // Copyright 2020 Google LLC
 //
