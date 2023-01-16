@@ -7,12 +7,16 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
+import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.OnRequestPermissionsResultCallback
 import androidx.core.content.ContextCompat
+import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.location.LocationServices
@@ -57,6 +61,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
         binding.myLocation.setOnClickListener {
             getLastLocation()
         }
+
+        binding.searchCity.doAfterTextChanged {
+            mainActivityViewModel.searchValue.value = it.toString()
+        }
+
+        binding.searchCity.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                mainActivityViewModel.loadCities()
+            }
+            false
+        }
     }
 
     private fun observeFromViewModel() {
@@ -68,10 +83,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
         }
 
         mainActivityViewModel.city.observe(this) {
-            val targetLocation = Location(LocationManager.GPS_PROVIDER)
-            targetLocation.longitude = it.location.lon
-            targetLocation.latitude = it.location.lat
-            mainActivityViewModel.moveCamera(targetLocation, 11f)
+             val targetLocation = Location(LocationManager.GPS_PROVIDER)
+             targetLocation.longitude = it.location.lon
+             targetLocation.latitude = it.location.lat
+             mainActivityViewModel.moveCamera(targetLocation, 11f)
         }
     }
 

@@ -20,16 +20,14 @@ import javax.inject.Inject
 class MainActivityViewModel @Inject constructor(private val repository: Repository) : ViewModel(),
     GoogleMap.OnMyLocationClickListener,
     GoogleMap.OnMyLocationButtonClickListener {
+
     lateinit var map: MutableLiveData<GoogleMap>
     val city = MutableLiveData<City>()
+    val searchValue = MutableLiveData<String>()
 
-    init {
-        loadCities()
-    }
-
-    private fun loadCities() {
+    fun loadCities() {
         CoroutineScope(Dispatchers.IO).launch {
-            val cities = repository.getCurrentWeather("Barranquilla")
+            val cities = repository.getCurrentWeather(searchValue.value.toString())
             when (cities.isSuccessful) {
                 true -> {
                     with(cities.body()) {
@@ -42,6 +40,7 @@ class MainActivityViewModel @Inject constructor(private val repository: Reposito
             }
         }
     }
+
     val isPermissionEnabled: MutableLiveData<Boolean>
         get() {
             return MutableLiveData<Boolean>()
@@ -54,10 +53,6 @@ class MainActivityViewModel @Inject constructor(private val repository: Reposito
 
     fun initMap(map: GoogleMap) {
         this.map = MutableLiveData(map)
-    }
-
-    init {
-
     }
 
     @SuppressLint("MissingPermission")
