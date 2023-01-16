@@ -40,6 +40,7 @@ import com.tgapps.weatherapp.databinding.ActivityMainBinding
 import com.tgapps.weatherapp.app.utils.Constants.AUTOCOMPLETE_REQUEST_CODE
 import com.tgapps.weatherapp.app.utils.PermissionUtils
 import com.tgapps.weatherapp.app.utils.PermissionUtils.isPermissionGranted
+import com.tgapps.weatherapp.utils.setupClearButtonWithAction
 import com.tgapps.weatherapp.viewModels.MainActivityViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -102,6 +103,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
             }
             false
         }
+
+        binding.searchCity.setupClearButtonWithAction()
     }
 
     private fun observeFromViewModel() {
@@ -137,8 +140,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback,
     @SuppressLint("MissingPermission")
     private fun getLastLocation() {
         LocationServices.getFusedLocationProviderClient(this).lastLocation.addOnSuccessListener {
-            mainActivityViewModel.userLocation.value = it
-            mainActivityViewModel.moveCamera(it, 15.0f)
+            if(it != null){
+                mainActivityViewModel.userLocation.value = it
+                mainActivityViewModel.moveCamera(it, 15.0f)
+            }
         }
     }
 

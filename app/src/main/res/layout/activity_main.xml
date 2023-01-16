@@ -18,7 +18,7 @@
         tools:context=".MapsActivity"
         tools:ignore="SpeakableTextPresentCheck" />
 
-    <AutoCompleteTextView
+    <com.google.android.material.textfield.MaterialAutoCompleteTextView
         android:id="@+id/searchCity"
         style="@style/Widget.AppCompat.Light.AutoCompleteTextView"
         android:layout_width="0dp"
@@ -35,6 +35,7 @@
         android:singleLine="true"
         android:textColor="@color/black"
         android:textColorHint="@color/black"
+        app:endIconMode="clear_text"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
